@@ -1,0 +1,26 @@
+{
+  "scripts": {
+    "types": "npm run types:fetch && npm run types:build",
+    "types:fetch": "npx supabase gen types typescript --local > ./src/supabase/generated-types.ts",
+    "types:build": "npx ts-auto-guard --paths=./src/supabase/index.ts --paths=./src/types.ts --export-all",
+    "dev": "nodemon -L src/index.ts",
+    "build": "tsc",
+    "prod": "docker build ./ -t crestron:prod && docker tag crestron:prod ghcr.io/vivecx/crestron:prod && docker push ghcr.io/vivecx/crestron:prod"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "http-errors": "^2.0.0",
+    "lodash": "^4.17.21",
+    "ts-auto-guard": "^4.1.3"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.13",
+    "@types/express": "^4.17.17",
+    "@types/http-errors": "^2.0.1",
+    "@types/lodash": "^4.14.195",
+    "nodemon": "^3.0.1",
+    "ts-node": "^10.9.1",
+    "typescript": "^5.3.3"
+  }
+}
