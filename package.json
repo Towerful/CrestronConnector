@@ -5,9 +5,10 @@
     "types:build": "npx ts-auto-guard --paths=./src/supabase/index.ts --paths=./src/types.ts --export-all",
     "dev": "nodemon -L src/index.ts",
     "build": "tsc",
-    "prod": "docker build ./ -t crestron:prod && docker tag crestron:prod ghcr.io/vivecx/crestron:prod && docker push ghcr.io/vivecx/crestron:prod"
+    "prod": "docker build ./ -t crestron:prod && docker tag crestron:prod ghcr.io/towerful/crestron:prod && docker push ghcr.io/towerful/crestron:prod"
   },
   "dependencies": {
+    "axios": "^1.7.7",
     "cors": "^2.8.5",
     "express": "^4.18.2",
     "http-errors": "^2.0.0",

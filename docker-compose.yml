@@ -2,12 +2,12 @@ version: "3.8"
 
 services:
   prod-noodle:
-    image: "ghcr.io/vivecx/noodle:prod"
+    image: "ghcr.io/towerful/crestron:prod"
     restart: unless-stopped
     ports:
       - "8084:3000"
     environment:
-      API_TOKEN: dev
       PORT: 3000
-      SUPABASE_URL: ${SUPABASE_URL}
-      SUPABASE_KEY: ${SUPABASE_SERVICE_KEY}
+      CRESTRON_HOST: 10.10.10.90
+      CRESTRON_USER: admin
+      CRESTRON_PWD: admin

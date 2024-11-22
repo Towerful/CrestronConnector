@@ -10,7 +10,7 @@ FROM node:lts-alpine as ts-remover
 WORKDIR /usr/app
 COPY --from=ts-compiler /usr/app/package*.json ./
 COPY --from=ts-compiler /usr/app/build ./
-RUN npm install --only=production
+RUN npm install --omit=dev
 
 FROM gcr.io/distroless/nodejs20-debian12
 WORKDIR /usr/app
