@@ -1,0 +1,23 @@
+FROM mcr.microsoft.com/devcontainers/typescript-node:1-20-bookworm
+
+# # Add Docker
+# RUN apt-get update \
+#     && apt-get -y install --no-install-recommends \
+#     apt-transport-https \
+#     ca-certificates \
+#     curl \
+#     gnupg2 \
+#     software-properties-common \
+#    && curl -fsSL https://download.docker.com/linux/debian/gpg | sudo apt-key add - \
+#    && add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/debian $(lsb_release -cs) stable" \
+#    && apt-get update \
+#    && apt-get -y install --no-install-recommends docker-ce \
+#    # Clean up
+#    && apt-get autoremove -y \
+#    && apt-get clean -y \
+#    && rm -rf /var/lib/apt/lists/*
+
+# # Symlink docker socket
+# RUN ln -s "/var/run/docker-host.sock" "/var/run/docker.sock"
+
+CMD ["sleep", "infinity"]

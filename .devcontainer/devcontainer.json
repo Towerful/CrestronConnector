@@ -1,0 +1,17 @@
+{
+  "name": "Node.js & TypeScript",
+  "overrideCommand": true,
+  "build": {
+    "dockerfile": "dockerfile"
+  },
+  // why is this the only dev container that requires this for git to work?!
+  "mounts": [
+		"source=${localEnv:HOME}/.ssh,target=/home/node/.ssh,type=bind,consistency=cached"
+	],
+  // fairly certain this is required for building - untested
+  "features": {
+    "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {}
+  },
+  
+  "runArgs": ["--network=host"]
+}
