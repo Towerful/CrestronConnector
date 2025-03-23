@@ -15,13 +15,23 @@ var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (
 }) : function(o, v) {
     o["default"] = v;
 });
-var __importStar = (this && this.__importStar) || function (mod) {
-    if (mod && mod.__esModule) return mod;
-    var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
-    __setModuleDefault(result, mod);
-    return result;
-};
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -40,13 +50,7 @@ const https = __importStar(require("https"));
 const express_1 = __importDefault(require("express"));
 const cors_1 = __importDefault(require("cors"));
 const http_errors_1 = __importDefault(require("http-errors"));
-const axios_1 = __importStar(require("axios"));
-const client = new axios_1.Axios({
-    httpsAgent: new https.Agent({
-        rejectUnauthorized: false
-    }),
-    withCredentials: true
-});
+const axios_1 = __importDefault(require("axios"));
 const parseToInt = (str, defaultValue) => {
     if (typeof str === 'undefined')
         return defaultValue;
@@ -58,60 +62,78 @@ const parseToInt = (str, defaultValue) => {
 const PORT = parseToInt(process.env.PORT, 8009);
 const CRESTRON_USER = (_a = process.env.CRESTRON_USER) !== null && _a !== void 0 ? _a : "admin";
 const CRESTRON_PWD = (_b = process.env.CRESTRON_PWD) !== null && _b !== void 0 ? _b : "admin";
-const CRESTRON_HOST = (_c = process.env.CRESTRON_HOST) !== null && _c !== void 0 ? _c : "localhost";
-const requestPromise = ((urlOptions, data) => {
-    return new Promise((resolve, reject) => {
-        const req = https.request(urlOptions, (res) => {
-            let body = '';
-            res.on('data', (chunk) => (body += chunk.toString()));
-            res.on('error', reject);
-            res.on('end', () => {
-                if (res.statusCode >= 200 && res.statusCode <= 299) {
-                    resolve({ statusCode: res.statusCode, headers: res.headers, body: body });
-                }
-                else {
-                    reject('Request failed. status: ' + res.statusCode + ', body: ' + body);
-                }
-            });
-        });
-        req.on('error', reject);
-        req.write(data, 'binary');
-        req.end();
+const CRESTRON_HOST = (_c = process.env.CRESTRON_HOST) !== null && _c !== void 0 ? _c : "10.10.10.90";
+const client = axios_1.default.create({
+    httpsAgent: new https.Agent({
+        rejectUnauthorized: false
+    }),
+    withCredentials: true,
+    withXSRFToken: true,
+    xsrfCookieName: "CREST-XSRF-TOKEN",
+    headers: {
+        "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Safari/537.36"
+    }
+});
+let cookies = {};
+let token = undefined;
+let init = false;
+client.interceptors.request.use((config) => {
+    console.log("---------------");
+    console.log("Request: ");
+    config.url = "https://" + config.url;
+    if (token) {
+        config.headers['CREST-XSRF-TOKEN'] = token;
+    }
+    config.headers['Sec-Fetch-Dest'];
+    config.headers['Sec-Fetch-Mode'] = "cors";
+    config.headers['Sec-Fetch-Site'] = "same-origin ";
+    if (!cookies)
+        return config;
+    config.headers['Cookie'] = Object.entries(cookies).map(([name, value]) => {
+        return `${name}=${value}`;
+    }).join('; ');
+    console.log(config.headers);
+    return config;
+});
+client.interceptors.response.use((response) => {
+    console.log("---------------");
+    console.log("Response:");
+    console.log(response.headers);
+    if (response.headers['CREST-XSRF-TOKEN']) {
+        console.log("Found token");
+        token = response.headers['CREST-XSRF-TOKEN'];
+    }
+    if (!response.headers['set-cookie'])
+        return response;
+    response.headers['set-cookie'][0].split(';').filter(c => c.includes("=")).forEach(c => {
+        const [name, value] = c.split('=');
+        cookies[name.trim()] = value.trim();
     });
+    return response;
 });
 const app = (0, express_1.default)();
 app.use((0, cors_1.default)());
 app.use(express_1.default.json());
 app.use(express_1.default.urlencoded({ extended: true }));
-let init = false;
 app.post('/', (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const body = req.body;
         const path = body.path;
         const payload = body.payload;
         const method = body.method;
-        if (!init) {
+        if (!init || !cookies) {
             init = yield login();
         }
-        if (!init) {
+        if (!init || !cookies) {
             throw http_errors_1.default.Unauthorized("Could not authenticate with crestron");
         }
-        const opts = {
-            method: method,
-            url: CRESTRON_HOST + path,
-            jar: true,
-            agentOptions: {
-                rejectUnauthorized: false // To accept self signed certificates
-            },
-            body: payload
-        };
-        console.log(opts);
+        console.log("Logged in!");
         let result;
-        if (method == "POST") {
-            result = yield axios_1.default.post(CRESTRON_HOST + path, payload);
+        if (method == "GET") {
+            result = yield client.get(CRESTRON_HOST + path);
         }
         else {
-            result = yield axios_1.default.get(CRESTRON_HOST + path);
+            result = yield client.post(CRESTRON_HOST + path, payload);
         }
         res.send(result);
     }
@@ -121,23 +143,29 @@ app.post('/', (req, res, next) => __awaiter(void 0, void 0, void 0, function* ()
 }));
 const login = () => __awaiter(void 0, void 0, void 0, function* () {
     const loginPage = CRESTRON_HOST + '/userlogin.html'; // Login page url
-    let formData = new FormData();
-    formData.append("login", CRESTRON_USER);
-    formData.append("passwd", CRESTRON_PWD);
-    return client.post(loginPage, formData).then(() => true, () => false);
-    // return promise_https(postOptions);
-    // return https.post(postOptions, async (error: any, response: any, body: any) => {
-    //   // Error handling
-    //   if (error) {
-    //     console.log('error: ' + response.statusCode);
-    //     console.log(body);
-    //     return false;
-    //   }
-    //   // Valid crendentials will cause the server to respond with a redirect to root
-    //   if (response.statusCode === 302 && (response.headers["location"] === '/')) {
-    //     return true;
-    //   }
-    // });
+    const result = yield client.get(loginPage);
+    return client.post(loginPage, `login=${CRESTRON_USER}&&passwd=${CRESTRON_PWD}`, {
+        headers: {
+            Origin: CRESTRON_HOST,
+            Referer: loginPage
+        }
+    }).then((res) => {
+        console.log(res.status);
+        if (res.status == 200) {
+            // console.log(res.data)       
+            return true;
+        }
+        if (res.status === 302 && (res.headers["location"] === '/')) {
+            return true;
+        }
+        else {
+            return false;
+        }
+    }, (...res) => {
+        console.log("error");
+        console.log(res);
+        return false;
+    });
 });
 console.log(`Listening on ${PORT}`);
 app.listen(PORT);

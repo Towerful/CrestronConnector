@@ -14,16 +14,19 @@ const CRESTRON_USER = process.env.CRESTRON_USER ?? "admin"
 const CRESTRON_PWD = process.env.CRESTRON_PWD ?? "admin"
 const CRESTRON_HOST = process.env.CRESTRON_HOST ?? "10.10.10.90"
 
+
 const client = axios.create({
   httpsAgent: new https.Agent({
     rejectUnauthorized: false
   }),
   withCredentials: true,
   withXSRFToken: true,
+  maxRedirects: 0,
   xsrfCookieName: "CREST-XSRF-TOKEN",
   headers: {
     "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Safari/537.36"
-  }
+  },
+  validateStatus: () => true
 })
 
 let cookies: { [name: string]: string } = {};
@@ -31,8 +34,6 @@ let token: string | undefined = undefined;
 let init = false;
 
 client.interceptors.request.use((config) => {
-  console.log("---------------")
-  console.log("Request: ")
   config.url = "https://" + config.url
   if (token) {
     config.headers['CREST-XSRF-TOKEN'] = token;
@@ -45,23 +46,20 @@ client.interceptors.request.use((config) => {
   config.headers['Cookie'] = Object.entries(cookies).map(([name, value]) => {
     return `${name}=${value}`
   }).join('; ')
-  console.log(config.headers);
   return config
 })
 
 client.interceptors.response.use((response) => {
-  console.log("---------------")
-  console.log("Response:")
-  console.log(response.headers);
   if (response.headers['CREST-XSRF-TOKEN']) {
-    console.log("Found token");
     token = response.headers['CREST-XSRF-TOKEN']
   }
   if (!response.headers['set-cookie']) return response;
-  response.headers['set-cookie'][0].split(';').filter(c => c.includes("=")).forEach(c => {
-    const [name, value] = c.split('=')
-    cookies[name.trim()] = value.trim()
-  });
+  response.headers['set-cookie'].map(str => {
+    str.split(';').filter(c => c.includes("=")).forEach(c => {
+      const [name, value] = c.split('=')
+      cookies[name.trim()] = value.trim()
+    });
+  })
   return response;
 })
 
@@ -86,14 +84,13 @@ app.post('/', async (req, res, next) => {
     if (!init || !cookies) {
       throw createError.Unauthorized("Could not authenticate with crestron");
     }
-    console.log("Logged in!")
     let result
     if (method == "GET") {
       result = await client.get(CRESTRON_HOST + path)
     } else {
       result = await client.post(CRESTRON_HOST + path, payload)
     }
-    res.send(result);
+    res.send(result.data);
   } catch (e) {
     next(e);
   }
@@ -112,7 +109,6 @@ const login = async () => {
       Referer: loginPage
     }
   }).then((res) => {
-    console.log(res.status)
     if (res.status == 200) {
       // console.log(res.data)       
       return true;
@@ -123,8 +119,6 @@ const login = async () => {
       return false
     }
   }, (...res) => {
-    console.log("error");
-    console.log(res);
     return false
   });
 }
